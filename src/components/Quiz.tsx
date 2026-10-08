@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { quizItems, quizSlots } from '../data/texts';
 
 interface Props {
@@ -24,14 +24,12 @@ export default function Quiz({ onClose }: Props) {
   const [completed, setCompleted] = useState(false);
   const [score, setScore] = useState(0);
   const [attempts, setAttempts] = useState(0);
-  const touchRef = useRef<string | null>(null);
 
   const handleItemClick = (item: DragItem) => {
     setSelectedItem(item);
-    touchRef.current = item.id;
   };
 
-  const handleSlotClick = useCallback((slotId: number) => {
+  const handleSlotClick = (slotId: number) => {
     const item = selectedItem;
     if (!item) return;
 
@@ -45,7 +43,6 @@ export default function Quiz({ onClose }: Props) {
       setFeedback(prev => ({ ...prev, [slotId]: 'correct' }));
       setScore(prev => prev + 1);
       setSelectedItem(null);
-      touchRef.current = null;
     } else {
       // Неправильно
       setFeedback(prev => ({ ...prev, [slotId]: 'wrong' }));
@@ -53,7 +50,7 @@ export default function Quiz({ onClose }: Props) {
         setFeedback(prev => ({ ...prev, [slotId]: null }));
       }, 1500);
     }
-  }, [selectedItem]);
+  };
 
   const handleRemoveItem = (slotId: number) => {
     const item = placedItems[slotId];
@@ -65,14 +62,15 @@ export default function Quiz({ onClose }: Props) {
     }
   };
 
-  // Проверка завершения (через useEffect-подобную логику)
-  const allPlaced = Object.values(placedItems).every(item => item !== null);
-  if (allPlaced && !completed) {
-    // Используем setTimeout чтобы избежать обновления во время рендера
-    setTimeout(() => setCompleted(true), 0);
-  }
+  // Проверка завершения — через useEffect (правильный паттерн React)
+  useEffect(() => {
+    const allPlaced = Object.values(placedItems).every(item => item !== null);
+    if (allPlaced && !completed) {
+      setCompleted(true);
+    }
+  }, [placedItems, completed]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setAvailableItems([...quizItems].sort(() => Math.random() - 0.5).map(item => ({ id: item.id, label: item.label })));
     setPlacedItems({ 0: null, 1: null, 2: null, 3: null });
     setFeedback({ 0: null, 1: null, 2: null, 3: null });
@@ -80,7 +78,7 @@ export default function Quiz({ onClose }: Props) {
     setCompleted(false);
     setScore(0);
     setAttempts(0);
-  };
+  }, []);
 
   return (
     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -197,7 +195,7 @@ export default function Quiz({ onClose }: Props) {
           <div className="mt-4 bg-amber-50 rounded-lg p-3 border border-amber-200">
             <p className="text-amber-700 text-sm">
               💡 <strong>Как играть:</strong> Нажмите на название процесса → затем нажмите на правильный слот.
-              Можно также перетаскивать элементы мышкой.
+              Если ошибётесь — слот подсветится красным, попробуйте снова.
             </p>
           </div>
         </div>
